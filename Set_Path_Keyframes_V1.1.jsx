@@ -8,29 +8,33 @@
     Special thanks to:
         James Ronan (https://creativecow.net/forums/thread/scripting-add-keyframe-to-all-path-shape/)
         Nik Ska (https://github.com/ae-scripting/scripting-snippets/blob/master/setKeysForPaths.jsx)
+        Justin Taylor (https://hyperbrew.co/blog/after-effects-command-ids/)
         Dan Ebberts
         Zack Lovatt
         Lloyd Alvarez
         David Torno
         Nate Lovell
-        Justin Taylor
 
     By: Mograph Mindset & Nate Lovell
-    Version 1.0
+    Version 1.1
     March 2023
 
     1.0         Initial release.
+    1.1         Added Select Keys at Time
 */
 
 // Selected Layers
-var myLayers = app.project.activeItem.selectedLayers;
-var atTime = app.project.activeItem.time;
+var myComp = app.project.activeItem;
+var atTime = myComp.time;
+var myLayers = myComp.selectedLayers;
+var myLayer;
 
 var allPathProps = [];
 var allPathPropsWithKeys = [];
 
 app.beginUndoGroup("Set Path Keyframes");
 
+// ADD KEYS
 // Loop through selected layers
 for (var i = 0; i < myLayers.length; i++) {
     myLayer = myLayers[i];
@@ -38,13 +42,29 @@ for (var i = 0; i < myLayers.length; i++) {
     if (myLayer instanceof ShapeLayer) {
         // Find the contents
         var myContents = myLayer.property("ADBE Root Vectors Group");
+
         // Apply Function to Shapes contents
         setKeysForPaths(myContents);
+
+        // Deselect each Shape Layer after processing
+        // This deselects each key & property to avoid duplicates
+        myLayer.selected = false;
+
+        // SELECT KEYS
+        // Loop through all Path Properties
+        for (var j = 0; j < allPathProps.length; j++) {
+            var myPaths = allPathProps[j];
+
+            // Select Keys At Time
+            var nKey = myPaths.nearestKeyIndex(atTime);
+            myPaths.setSelectedAtKey(nKey, true);
+        }
     }
     // End of if statement
 }
 // End of for loop.
 
+// REMOVE KEYS
 // If all layers & path properties HAVE KEYFRAMES at the current time
 if (allPathProps.length == allPathPropsWithKeys.length) {
     // Loop through selected layers
@@ -60,7 +80,7 @@ if (allPathProps.length == allPathPropsWithKeys.length) {
         // End of if statement
     }
     // End of for loop.
-
+    
 }
 
 app.endUndoGroup();
@@ -84,6 +104,7 @@ function setKeysForPaths(a) {
                 if (cycleProps.isTimeVarying == false) {
                     cycleProps.addKey(atTime); // add key
 
+                //If property is ANIMATED
                 } else {
 
                     // If property has KEYFRAMES
